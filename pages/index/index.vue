@@ -11,9 +11,11 @@
 		</uni-popup>
 		
 		<view class="roomNo">
-			房间：{{room}} <br/>
-							<br/>
-			人数：{{users.length + 1}}
+			<span>角色: {{type}} </span>
+			<span>房间: {{room}} </span>
+			<span>人数: {{users.length + 1}} </span>
+			<span>版本: 0.0.20</span>
+			<span>坐标: {{longitude}}</span>
 		</view>
 		<map 
 		name="map" 
@@ -36,22 +38,19 @@
 
 <script>
 	import io from '@hyoga/uni-socket.io';
-	
 	export default {
 		data() {
 			return {
 				longitude:'',
 				latitude:'',
-				type:'',
+				type:null,
 				room:null,
 				msgType:'success',
 				messageText:'',
-				users:[
-					
-				],
+				users:[],
 				userinfo:{},
-				socket:null,
-				id:''
+				socket:'',
+				id:Math.floor(Math.random()*1000)
 			}
 		},
 		onLoad() {
@@ -60,7 +59,21 @@
 				this.latitude = res[1]
 			})
 		},
+		onShow() {
+			if(this.room && this.type == 'creater') {
+				console.log('creater重新加入房间。。。。');
+				this.createRoom()
+			}else if(this.room && this.type == 'joiner') {
+				console.log('joiner重新加入房间。。。。');
+				this.joinRoom()
+			}
+		},
 		methods: {
+			message(type, text) {
+				this.msgType = type
+				this.messageText = text
+				this.$refs.message.open()
+			},
 			inputDialogToggle() {
 				this.$refs.inputDialog.open()
 			},
@@ -87,19 +100,14 @@
 			// 获取用户信息
 			getUserInfo() {
 				return new Promise((resolve, reject) => {
-					if(!Object.keys(this.userinfo).length === 0) {
-						return;
-					}
-					// 获取个人信息
 					wx.getUserProfile({
-						desc: '用于完善会员资料', 
+						desc: '用于完善相关信息', 
 						success: (res) => {
-							console.log(res);
+							console.log('用户信息:', res);
 							this.userinfo = res.userInfo
-							resolve()
+							resolve(res)
 						},
 						fail(err) {
-							console.log(err);
 							reject(err)
 						}
 					})
@@ -108,7 +116,7 @@
 			
 			create() {
 				if(this.isInRoom()) {
-					console.log('已经在房间里了！');
+					this.message('error', '已经在房间里了!')
 					return
 				}
 				this.type = 'creater'
@@ -116,7 +124,7 @@
 			},
 			join() {
 				if(this.isInRoom()) {
-					console.log('已经在房间里了！');
+					this.message('error', '已经在房间里了!')
 					return
 				}
 				this.type = 'joiner'
@@ -128,20 +136,36 @@
 			},
 			// 输入房间号 创建房间
 			async createRoom() {
-			    await	this.getUserInfo()
-				this.id = Math.floor(Math.random() * 1000)
+				// 是否用用户信息
+				if(Object.keys(this.userinfo).length === 0) {
+					try{
+						await	this.getUserInfo()
+					}catch(e){
+						this.message('error', '获取个人信息失败')
+						
+						this.room = null
+						this.type = null
+						return
+					}
+				}
 				// 连接socket
 			 	const socket =  io('https://wuyupei.top:8888', {
 				  query: {
 					  auth: this.room,
-					  type: this.type
+					  type: this.type,
+					  id: this.id
 				  },
 				  transports: [ 'websocket', 'polling' ],
 				  timeout: 5000,
 				});
-				
+				Object.defineProperty(this, 'sockets', {
+					value: socket,
+					configurable : true,
+					writable : true,
+					enumerable : true,
+				})
 				socket.on('location',res => {
-					res =typeof res === 'string' ? JSON.parse(res) : res
+					res = typeof res === 'string' ? JSON.parse(res) : res
 					if(res.type === 'creater') return
 					const result =	this.users.findIndex((item, index) => item.id == res.id) 
 					
@@ -154,6 +178,18 @@
 					
 				})
 				
+				socket.on('joner-disconnect', res => {
+					this.message('warning', res.msg)
+					const result =	this.users.findIndex((item, index) => item.id == res.id)
+					
+					if(result == -1) {
+						return
+					}else {
+						this.users.splice(result, 1)
+					}
+					
+				})
+				
 				socket.emit('location', {
 					id:this.id,
 					type:this.type,
@@ -165,34 +201,65 @@
 					iconPath:this.userinfo.avatarUrl
 				})
 				
-				wx.onLocationChange(({latitude, longitude}) => {
-					this.longitude = latitude
-					this.latitude = longitude
-					socket.emit('location', {
-						id:this.id,
-						type:this.type,
-						width: 30,
-						height: 30,
-						latitude:this.latitude,
-						longitude:this.longitude,
-						title: this.userinfo.nickName,
-						iconPath:this.userinfo.avatarUrl
-					})
+				wx.startLocationUpdate({
+					success: res=> {
+						console.log('开启实时位置更新了...');
+						wx.onLocationChange(({latitude, longitude}) => {
+							if(this.latitude !== latitude || this.longitude !== longitude) {
+									console.log('位置发送变化已经为你更新了...');
+									// 只需要把位置发出去
+									// this.longitude = longitude
+									// this.latitude = latitude
+									console.log(latitude, longitude);
+									socket.emit('location', {
+										id:this.id,
+										type:this.type,
+										width: 30,
+										height: 30,
+										latitude: latitude,
+										longitude:longitude,
+										title: this.userinfo.nickName,
+										iconPath:this.userinfo.avatarUrl
+									})
+							}else {
+								console.log('位置未发生变化未为你更新...');
+							}
+						})
+					},
+					fail() {
+						this.message('error', '你已拒绝实时位置共享服务，请授权！')
+					}
 				})
 			},
 			async joinRoom() {
-				await	this.getUserInfo()
-				this.id = Math.floor(Math.random() * 1000)
+				if(Object.keys(this.userinfo).length === 0) {
+					let res = await	this.getUserInfo()
+					if(!res) {
+						this.message('error', '获取个人信息失败')
+						
+						this.room = null
+						this.type = null
+						return
+					}
+				}
 				// 连接socket
 				const socket = io('https://wuyupei.top:8888', {
 				  query: {
 					  auth: this.room,
-					  type: this.type
+					  type: this.type,
+					  id: this.id
 				  },
 				  transports: [ 'websocket', 'polling' ],
 				  timeout: 5000,
 				});
 				
+				Object.defineProperty(this, 'sockets', {
+					value: socket,
+					configurable : true,
+					writable : true,
+					enumerable : true,
+				})
+
 				socket.on('location',res => {
 					res =typeof res === 'string' ? JSON.parse(res) : res
 					if(res.type === 'creater') {
@@ -202,10 +269,21 @@
 				
 				// 房间不存在
 				socket.on('room-no-exit', (res) => {
-					console.log(res);
-					this.msgType = 'error'
-					this.messageText = res.msg
-					this.$refs.message.open()
+					this.message('warning', res.msg)
+					
+					this.room = null
+					
+				})
+				
+				// 房主关闭房间 
+				socket.on('homeowner-disconnect', res => {
+					this.message('warning', res.msg)
+					
+					this.sockets.disconnect()
+					delete this.sockets
+					this.room = null
+					this.type = null
+					this.users = []
 				})
 				
 				socket.emit('location', {
@@ -219,23 +297,44 @@
 					iconPath:this.userinfo.avatarUrl
 				})
 				
-				wx.onLocationChange(({latitude, longitude}) => {
-						this.longitude = latitude
-						this.latitude = longitude
-						socket.emit('location', {
-							id:this.id,
-							type:this.type,
-							width: 50,
-							height: 50,
-							latitude:this.latitude,
-							longitude:this.longitude,
-							title: this.userinfo.nickName,
-							iconPath:this.userinfo.avatarUrl
+				wx.startLocationUpdate({
+					success: res=> {
+						console.log('开启实时位置更新了...');
+						wx.onLocationChange(({latitude, longitude}) => {
+							if(this.latitude !== latitude || this.longitude !== longitude) {
+									console.log('位置发送变化已经为你更新了...');
+									// 不需要更新
+									// this.longitude = longitude
+									// this.latitude = latitude
+									console.log(latitude, longitude);
+									socket.emit('location', {
+										id:this.id,
+										type:this.type,
+										width: 30,
+										height: 30,
+										latitude: latitude,
+										longitude: longitude,
+										title: this.userinfo.nickName,
+										iconPath:this.userinfo.avatarUrl
+									})
+							}else {
+								console.log('位置未发生变化未为你更新...');
+							}
 						})
+					},
+					fail() {
+						this.message('error', '你已拒绝实时位置共享服务')
+					}
 				})
 			},
 			out() {
-				console.log('退出');
+				if(!this.sockets) return
+				this.message('success', '你已退出房间')
+				this.sockets.disconnect()
+				delete this.sockets
+				this.room = null
+				this.type = null
+				this.users = []
 			}
 		}
 	}
@@ -252,10 +351,19 @@
 	}
 	.roomNo {
 		position: fixed;
+		display: flex;
+		justify-content: space-around;
+		color: aliceblue;
+		width: 100%;
+		height: auto;
 		top: 0;
 		left: 0;
-		background-color: transparent;
+		background-color: rgba(0, 0, 0, 0.3);
+		padding: 10rpx 0;
 		z-index: 99999;
+	}
+	.roomNo span {
+		font-size: 24rpx
 	}
 	.control {
 		position: fixed;
