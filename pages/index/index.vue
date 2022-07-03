@@ -1,5 +1,6 @@
 <template>
 	<view class="content">
+		<canvas type="2d" id="myCanvas" style="display: none;"></canvas>
 		<view>
 			<uni-popup ref="inputDialog" type="dialog">
 				<uni-popup-dialog ref="inputClose"  mode="input" title="输入组队号" value=""
@@ -105,6 +106,8 @@
 						success: (res) => {
 							console.log('用户信息:', res);
 							this.userinfo = res.userInfo
+							// 绘制图像
+							// this.getImage(res.userInfo.avatarUrl)
 							resolve(res)
 						},
 						fail(err) {
@@ -130,7 +133,43 @@
 				this.type = 'joiner'
 				this.inputDialogToggle()
 			},
-			
+			getImage(url) {
+				const query = wx.createSelectorQuery()
+				    query.select('#myCanvas')
+				      .fields({ node: true, size: true })
+				      .exec((res) => {
+				        const canvas = res[0].node
+				        const ctx = canvas.getContext('2d')
+						
+				        const dpr = wx.getSystemInfoSync().pixelRatio
+				        canvas.width = res[0].width * dpr
+				        canvas.height = res[0].height * dpr
+				        ctx.scale(dpr, dpr)
+				
+				        const image = canvas.createImage()
+						const marker = canvas.createImage()
+						
+						image.src = url
+						marker.src = 'https://wuyupei.top:8888/upload/02b8136651d753b7a551e1000.png'
+						
+						
+						// ctx.drawImage(image, 0, 0)
+						ctx.drawImage(marker, 0, 0)
+						
+						wx.canvasToTempFilePath({
+							  x: 0,
+							  y: 0,
+							  width: 150,
+							  height: 150,
+							  destWidth: 100,
+							  destHeight: 100,
+							  canvas: canvas,
+							  success(res) {
+								console.log(res.tempFilePath)
+							  }
+						})
+				      })
+			},
 			isInRoom() {
 				return this.room
 			},
