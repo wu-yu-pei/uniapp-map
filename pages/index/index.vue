@@ -15,8 +15,7 @@
 			<span>角色: {{type}} </span>
 			<span>房间: {{room}} </span>
 			<span>人数: {{users.length + 1}} </span>
-			<span>版本: 0.0.20</span>
-			<span>坐标: {{longitude}}</span>
+			<span>版本: 0.0.28</span>
 		</view>
 		<map 
 		name="map" 
@@ -25,9 +24,10 @@
 		enable-3D="ture" 
 		isHighAccuracy="true" 
 		enable-indoorMap="ture"
-		:markers="users"
-		:longitude="longitude" 
-		:latitude="latitude"></map>
+		:latitude="latitude"
+		:longitude="longitude"
+		:markers="users">
+		</map>
 		
 		<view class="control">
 			<button @click="create">创建房间</button>
@@ -44,6 +44,9 @@
 			return {
 				longitude:'',
 				latitude:'',
+				relongitude:'',
+				relatitude:'',
+				zhizhen:0,
 				type:null,
 				room:null,
 				msgType:'success',
@@ -232,33 +235,69 @@
 				socket.emit('location', {
 					id:this.id,
 					type:this.type,
-					width: 30,
-					height: 30,
+					width: 16,
+					height: 16,
+					anchor: {
+						x: 0.5,
+						y: 0.5
+					},
+					rotate: this.zhizhen,
 					latitude:this.latitude,
 					longitude:this.longitude,
 					title: this.userinfo.nickName,
-					iconPath:this.userinfo.avatarUrl
+					iconPath:'../../static/location.png'
+				})
+				
+				wx.startDeviceMotionListening({
+					interval: 'normal',
+					success: res => {
+						wx.onDeviceMotionChange(res => {
+							if(Math.abs(this.zhizhen - res.alpha) < 5) return
+							this.zhizhen = res.alpha + 20
+							socket.emit('location', {
+								id:this.id,
+								type:this.type,
+								width: 16,
+								height: 16,
+								anchor: {
+									x: 0.5,
+									y: 0.5
+								},
+								rotate: this.zhizhen,
+								latitude: this.relatitude,
+								longitude:this.relongitude,
+								title: this.userinfo.nickName,
+								iconPath:'../../static/location.png'
+							})
+						})
+					},
+					fail: err => {
+						console.log(err);
+					}
 				})
 				
 				wx.startLocationUpdate({
 					success: res=> {
 						console.log('开启实时位置更新了...');
 						wx.onLocationChange(({latitude, longitude}) => {
-							if(this.latitude !== latitude || this.longitude !== longitude) {
+							if(this.relatitude !== latitude || this.relongitude !== longitude) {
 									console.log('位置发送变化已经为你更新了...');
-									// 只需要把位置发出去
-									// this.longitude = longitude
-									// this.latitude = latitude
-									console.log(latitude, longitude);
+									// 优化部分
+									this.relongitude = longitude
+									this.relatitude = latitude
 									socket.emit('location', {
 										id:this.id,
 										type:this.type,
-										width: 30,
-										height: 30,
+										width: 16,
+										height: 16,
+										anchor: {
+											x: 0.5,
+											y: 0.5
+										},
 										latitude: latitude,
 										longitude:longitude,
 										title: this.userinfo.nickName,
-										iconPath:this.userinfo.avatarUrl
+										iconPath:'../../static/location.png'
 									})
 							}else {
 								console.log('位置未发生变化未为你更新...');
@@ -328,12 +367,41 @@
 				socket.emit('location', {
 					id:this.id,
 					type:this.type,
-					width: 30,
-					height: 30,
+					width: 16,
+					height: 16,
+					rotate: this.zhizhen,
 					latitude:this.latitude,
 					longitude:this.longitude,
 					title: this.userinfo.nickName,
-					iconPath:this.userinfo.avatarUrl
+					iconPath:'../../static/location.png'
+				})
+				
+				wx.startDeviceMotionListening({
+					interval: 'normal',
+					success: res => {
+						wx.onDeviceMotionChange(res => {
+							if(Math.abs(this.zhizhen - res.alpha) < 5) return
+							this.zhizhen = res.alpha + 20
+							socket.emit('location', {
+								id:this.id,
+								type:this.type,
+								width: 16,
+								height: 16,
+								anchor: {
+									x: 0.5,
+									y: 0.5
+								},
+								rotate: this.zhizhen,
+								latitude: this.latitude,
+								longitude:this.longitude,
+								title: this.userinfo.nickName,
+								iconPath:'../../static/location.png'
+							})
+						})
+					},
+					fail: err => {
+						console.log(err);
+					}
 				})
 				
 				wx.startLocationUpdate({
@@ -342,19 +410,24 @@
 						wx.onLocationChange(({latitude, longitude}) => {
 							if(this.latitude !== latitude || this.longitude !== longitude) {
 									console.log('位置发送变化已经为你更新了...');
-									// 不需要更新
-									// this.longitude = longitude
-									// this.latitude = latitude
+									// 优化部分
+									this.relongitude = longitude
+									this.relatitude = latitude
 									console.log(latitude, longitude);
 									socket.emit('location', {
 										id:this.id,
 										type:this.type,
-										width: 30,
-										height: 30,
+										width: 16,
+										height: 16,
+										anchor: {
+											x: 0.5,
+											y: 0.5
+										},
+										rotate: this.zhizhen,
 										latitude: latitude,
 										longitude: longitude,
 										title: this.userinfo.nickName,
-										iconPath:this.userinfo.avatarUrl
+										iconPath:'../../static/location.png'
 									})
 							}else {
 								console.log('位置未发生变化未为你更新...');
