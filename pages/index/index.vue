@@ -15,7 +15,7 @@
 			<span>角色: {{type}} </span>
 			<span>房间: {{room}} </span>
 			<span>人数: {{users.length + 1}} </span>
-			<span>版本: 0.0.28</span>
+			<span>版本: 1.0.0</span>
 		</view>
 		<map 
 		name="map" 
@@ -65,10 +65,10 @@
 		},
 		onShow() {
 			if(this.room && this.type == 'creater') {
-				console.log('creater重新加入房间。。。。');
+				
 				this.createRoom()
 			}else if(this.room && this.type == 'joiner') {
-				console.log('joiner重新加入房间。。。。');
+				
 				this.joinRoom()
 			}
 		},
@@ -107,7 +107,7 @@
 					wx.getUserProfile({
 						desc: '用于完善相关信息', 
 						success: (res) => {
-							console.log('用户信息:', res);
+							
 							this.userinfo = res.userInfo
 							// 绘制图像
 							// this.getImage(res.userInfo.avatarUrl)
@@ -200,12 +200,14 @@
 				  transports: [ 'websocket', 'polling' ],
 				  timeout: 5000,
 				});
+				
 				Object.defineProperty(this, 'sockets', {
 					value: socket,
 					configurable : true,
 					writable : true,
 					enumerable : true,
 				})
+				
 				socket.on('location',res => {
 					res = typeof res === 'string' ? JSON.parse(res) : res
 					if(res.type === 'creater') return
@@ -250,38 +252,45 @@
 				
 				wx.startDeviceMotionListening({
 					interval: 'normal',
-					success: res => {
+					success: (res) => {
+						
 						wx.onDeviceMotionChange(res => {
-							if(Math.abs(this.zhizhen - res.alpha) < 5) return
-							this.zhizhen = res.alpha + 20
-							socket.emit('location', {
-								id:this.id,
-								type:this.type,
-								width: 16,
-								height: 16,
-								anchor: {
-									x: 0.5,
-									y: 0.5
-								},
-								rotate: this.zhizhen,
-								latitude: this.relatitude,
-								longitude:this.relongitude,
-								title: this.userinfo.nickName,
-								iconPath:'../../static/location.png'
-							})
+							
+							if(Math.abs(this.zhizhen - res.alpha) < 10) {
+								
+								return
+							}else {
+								
+								this.zhizhen = res.alpha
+								socket.emit('location', {
+									id:this.id,
+									type:this.type,
+									width: 16,
+									height: 16,
+									anchor: {
+										x: 0.5,
+										y: 0.5
+									},
+									rotate: this.zhizhen,
+									latitude: this.relatitude,
+									longitude:this.relongitude,
+									title: this.userinfo.nickName,
+									iconPath:'../../static/location.png'
+								})
+							}
 						})
 					},
 					fail: err => {
-						console.log(err);
+						
 					}
 				})
 				
 				wx.startLocationUpdate({
 					success: res=> {
-						console.log('开启实时位置更新了...');
+						
 						wx.onLocationChange(({latitude, longitude}) => {
 							if(this.relatitude !== latitude || this.relongitude !== longitude) {
-									console.log('位置发送变化已经为你更新了...');
+									
 									// 优化部分
 									this.relongitude = longitude
 									this.relatitude = latitude
@@ -300,7 +309,7 @@
 										iconPath:'../../static/location.png'
 									})
 							}else {
-								console.log('位置未发生变化未为你更新...');
+								
 							}
 						})
 					},
@@ -339,8 +348,9 @@
 				})
 
 				socket.on('location',res => {
-					res =typeof res === 'string' ? JSON.parse(res) : res
+					res = typeof res === 'string' ? JSON.parse(res) : res
 					if(res.type === 'creater') {
+						this.users = []
 						this.users = [res]
 					}
 				})
@@ -369,6 +379,10 @@
 					type:this.type,
 					width: 16,
 					height: 16,
+					anchor: {
+						x: 0.5,
+						y: 0.5
+					},
 					rotate: this.zhizhen,
 					latitude:this.latitude,
 					longitude:this.longitude,
@@ -380,40 +394,45 @@
 					interval: 'normal',
 					success: res => {
 						wx.onDeviceMotionChange(res => {
-							if(Math.abs(this.zhizhen - res.alpha) < 5) return
-							this.zhizhen = res.alpha + 20
-							socket.emit('location', {
-								id:this.id,
-								type:this.type,
-								width: 16,
-								height: 16,
-								anchor: {
-									x: 0.5,
-									y: 0.5
-								},
-								rotate: this.zhizhen,
-								latitude: this.latitude,
-								longitude:this.longitude,
-								title: this.userinfo.nickName,
-								iconPath:'../../static/location.png'
-							})
+							if(Math.abs(this.zhizhen - res.alpha) < 10) {
+								
+								return
+							}else {
+								
+								this.zhizhen = res.alpha
+								socket.emit('location', {
+									id:this.id,
+									type:this.type,
+									width: 16,
+									height: 16,
+									anchor: {
+										x: 0.5,
+										y: 0.5
+									},
+									rotate: this.zhizhen,
+									latitude: this.latitude,
+									longitude:this.longitude,
+									title: this.userinfo.nickName,
+									iconPath:'../../static/location.png'
+								})
+							}
 						})
 					},
 					fail: err => {
-						console.log(err);
+						
 					}
 				})
 				
 				wx.startLocationUpdate({
 					success: res=> {
-						console.log('开启实时位置更新了...');
+						
 						wx.onLocationChange(({latitude, longitude}) => {
 							if(this.latitude !== latitude || this.longitude !== longitude) {
-									console.log('位置发送变化已经为你更新了...');
+									
 									// 优化部分
 									this.relongitude = longitude
 									this.relatitude = latitude
-									console.log(latitude, longitude);
+									
 									socket.emit('location', {
 										id:this.id,
 										type:this.type,
@@ -430,7 +449,7 @@
 										iconPath:'../../static/location.png'
 									})
 							}else {
-								console.log('位置未发生变化未为你更新...');
+								
 							}
 						})
 					},
