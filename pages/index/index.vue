@@ -1,6 +1,5 @@
 <template>
 	<view class="content">
-		<canvas type="2d" id="myCanvas" style="display: none;"></canvas>
 		<view>
 			<uni-popup ref="inputDialog" type="dialog">
 				<uni-popup-dialog ref="inputClose"  mode="input" title="输入组队号" value=""
@@ -15,7 +14,7 @@
 			<span>角色: {{type}} </span>
 			<span>房间: {{room}} </span>
 			<span>人数: {{users.length + 1}} </span>
-			<span>版本: 1.0.0</span>
+			<span>版本: 1.1.1</span>
 		</view>
 		<map 
 		name="map" 
@@ -29,10 +28,13 @@
 		:markers="users">
 		</map>
 		
-		<view class="control">
-			<button @click="create">创建房间</button>
-			<button @click="join">加入房间</button>
-			<button @click="out">退出房间</button>
+		<view :class="{menu:true, show: isShowControl}">
+			<view @click="create">创建</view>
+			<view @click="join">加入</view>
+			<view @click="out">退出</view>
+		</view>
+		<view :class="{control: true, rotate: isShowControl}" @click="isShowControl = !isShowControl">
+			<img src="../../static/add.png" alt="">
 		</view>
 	</view>
 </template>
@@ -54,7 +56,8 @@
 				users:[],
 				userinfo:{},
 				socket:'',
-				id:Math.floor(Math.random()*1000)
+				id:Math.floor(Math.random()*1000),
+				isShowControl: false
 			}
 		},
 		onLoad() {
@@ -73,6 +76,9 @@
 			}
 		},
 		methods: {
+			hidden() {
+				this.isShowControl = !this.isShowControl
+			}, 
 			message(type, text) {
 				this.msgType = type
 				this.messageText = text
@@ -121,6 +127,7 @@
 			},
 			
 			create() {
+				this.hidden()
 				if(this.isInRoom()) {
 					this.message('error', '已经在房间里了!')
 					return
@@ -129,6 +136,7 @@
 				this.inputDialogToggle()
 			},
 			join() {
+				this.hidden()
 				if(this.isInRoom()) {
 					this.message('error', '已经在房间里了!')
 					return
@@ -212,7 +220,7 @@
 					res = typeof res === 'string' ? JSON.parse(res) : res
 					if(res.type === 'creater') return
 					const result =	this.users.findIndex((item, index) => item.id == res.id) 
-					
+					console.log(this.users);
 					if(result == -1) {
 						this.users.push(res)
 					}else {
@@ -253,11 +261,8 @@
 				wx.startDeviceMotionListening({
 					interval: 'normal',
 					success: (res) => {
-						
 						wx.onDeviceMotionChange(res => {
-							
-							if(Math.abs(this.zhizhen - res.alpha) < 10) {
-								
+							if(Math.abs(this.zhizhen - res.alpha) < 30) {
 								return
 							}else {
 								
@@ -287,10 +292,8 @@
 				
 				wx.startLocationUpdate({
 					success: res=> {
-						
 						wx.onLocationChange(({latitude, longitude}) => {
 							if(this.relatitude !== latitude || this.relongitude !== longitude) {
-									
 									// 优化部分
 									this.relongitude = longitude
 									this.relatitude = latitude
@@ -303,6 +306,7 @@
 											x: 0.5,
 											y: 0.5
 										},
+										rotate:this.zhizhen,
 										latitude: latitude,
 										longitude:longitude,
 										title: this.userinfo.nickName,
@@ -349,8 +353,9 @@
 
 				socket.on('location',res => {
 					res = typeof res === 'string' ? JSON.parse(res) : res
+					console.log(this.users);
 					if(res.type === 'creater') {
-						this.users = []
+						
 						this.users = [res]
 					}
 				})
@@ -383,7 +388,7 @@
 						x: 0.5,
 						y: 0.5
 					},
-					rotate: this.zhizhen,
+					rotate:this.zhizhen,
 					latitude:this.latitude,
 					longitude:this.longitude,
 					title: this.userinfo.nickName,
@@ -394,11 +399,9 @@
 					interval: 'normal',
 					success: res => {
 						wx.onDeviceMotionChange(res => {
-							if(Math.abs(this.zhizhen - res.alpha) < 10) {
-								
+							if(Math.abs(this.zhizhen - res.alpha) < 30) {
 								return
 							}else {
-								
 								this.zhizhen = res.alpha
 								socket.emit('location', {
 									id:this.id,
@@ -459,6 +462,7 @@
 				})
 			},
 			out() {
+				this.hidden()
 				if(!this.sockets) return
 				this.message('success', '你已退出房间')
 				this.sockets.disconnect()
@@ -483,29 +487,66 @@
 	.roomNo {
 		position: fixed;
 		display: flex;
+		margin: 0;
+		padding: 0;
 		justify-content: space-around;
 		color: aliceblue;
-		width: 100%;
-		height: auto;
-		top: 0;
-		left: 0;
-		background-color: rgba(0, 0, 0, 0.3);
-		padding: 10rpx 0;
-		z-index: 99999;
+		width: calc(100% - 190rpx);
+		text-align: center;
+		line-height: 100rpx;
+		border-radius: 20rpx;
+		height: 100rpx;
+		bottom: 50rpx;
+		left: 160rpx;
+		background-color: #fff;
+		z-index: 2;
 	}
 	.roomNo span {
-		font-size: 24rpx
+		font-size: 20rpx;
+		color: black;
+		margin: 0;
+		padding: 0;
+	}
+	.menu {
+		position: fixed;
+		bottom: 130rpx;
+		left: 30rpx;
+		width: 100rpx;
+		height: 400rpx;
+		transition: all linear 0.3s;
+		opacity: 0;
+	}
+	.menu view {
+		text-align: center;
+		line-height: 100rpx;
+		width: 100rpx;
+		height: 100rpx;
+		background-color: #fff;
+		margin: 20rpx 0;
+		border-radius: 50%;
+	}
+	.show {
+		opacity: 1;
 	}
 	.control {
-		position: fixed;
 		display: flex;
-
-		justify-content: center;		
-		height: 150rpx;
+		position: fixed;
+		justify-content: center;
 		align-items: center;
-		background-color:rgba(0, 0, 0, 0.5);
-		bottom: 0;
-		left: 0;
-		right: 0;
+		left: 30rpx;
+		bottom: 50rpx;
+		width: 100rpx;
+		height: 100rpx;
+		border-radius: 50%;
+		align-items: center;
+		background-color:rgba(255, 255, 255);
+		transition: all linear 0.2s;
+	}
+	.control image {
+		width: 60rpx;
+		height: 60rpx;
+	}
+	.rotate {
+		transform: rotateZ(45deg);
 	}
 </style>
