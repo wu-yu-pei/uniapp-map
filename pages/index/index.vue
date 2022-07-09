@@ -14,7 +14,7 @@
 			<span>角色: {{type}} </span>
 			<span>房间: {{room}} </span>
 			<span>人数: {{users.length + 1}} </span>
-			<span>版本: 1.1.1</span>
+			<span>版本: 1.1.2</span>
 		</view>
 		<map 
 		name="map" 
@@ -33,8 +33,8 @@
 			<view @click="join">加入</view>
 			<view @click="out">退出</view>
 		</view>
-		<view :class="{control: true, rotate: isShowControl}" @click="isShowControl = !isShowControl">
-			<img src="../../static/add.png" alt="">
+		<view :class="{control: true}" @click="isShowControl = !isShowControl">
+			<img :class="{rotate: isShowControl}" src="../../static/add.png" alt="">
 		</view>
 	</view>
 </template>
@@ -262,11 +262,13 @@
 					interval: 'normal',
 					success: (res) => {
 						wx.onDeviceMotionChange(res => {
-							if(Math.abs(this.zhizhen - res.alpha) < 30) {
+							console.log(res.alpha);
+							if(Math.abs(this.zhizhen - res.alpha) < 95) {
+								console.log('小于30不更新。。。');
 								return
 							}else {
-								
-								this.zhizhen = res.alpha
+								console.log('大于30更新。。。');
+								this.zhizhen = res.alpha + 45
 								socket.emit('location', {
 									id:this.id,
 									type:this.type,
@@ -399,10 +401,12 @@
 					interval: 'normal',
 					success: res => {
 						wx.onDeviceMotionChange(res => {
-							if(Math.abs(this.zhizhen - res.alpha) < 30) {
+							if(Math.abs(this.zhizhen - res.alpha) < 95) {
+								console.log('小于30不更新。。。');
 								return
 							}else {
-								this.zhizhen = res.alpha
+								console.log('大于30更新。。。');
+								this.zhizhen = res.alpha + 45
 								socket.emit('location', {
 									id:this.id,
 									type:this.type,
@@ -463,6 +467,8 @@
 			},
 			out() {
 				this.hidden()
+				wx.stopLocationUpdate()
+				wx.stopDeviceMotionListening()
 				if(!this.sockets) return
 				this.message('success', '你已退出房间')
 				this.sockets.disconnect()
@@ -523,7 +529,7 @@
 		height: 100rpx;
 		background-color: #fff;
 		margin: 20rpx 0;
-		border-radius: 50%;
+		border-radius: 20rpx;
 	}
 	.show {
 		opacity: 1;
@@ -537,7 +543,7 @@
 		bottom: 50rpx;
 		width: 100rpx;
 		height: 100rpx;
-		border-radius: 50%;
+		border-radius: 20rpx;
 		align-items: center;
 		background-color:rgba(255, 255, 255);
 		transition: all linear 0.2s;
@@ -545,6 +551,7 @@
 	.control image {
 		width: 60rpx;
 		height: 60rpx;
+		transition: all linear 0.2s;
 	}
 	.rotate {
 		transform: rotateZ(45deg);
