@@ -26,6 +26,13 @@
 		:latitude="latitude"
 		:longitude="longitude"
 		:markers="users">
+			<cover-view slot="callout">
+				<template v-for="item in users">
+					<cover-view :marker-id="item.id">
+						<cover-image :src="item.img" class="cover-image"></cover-image>
+					</cover-view>
+				</template>
+			  </cover-view>
 		</map>
 		
 		<view :class="{menu:true, show: isShowControl}">
@@ -243,9 +250,10 @@
 				})
 				
 				socket.emit('location', {
-					id:this.id,
+					id:this.id,img:this.userinfo.avatarUrl,
 					type:this.type,
 					width: 16,
+					customCallout:{display:'ALWAYS', anchorX:0, anchorY:0},
 					height: 16,
 					anchor: {
 						x: 0.5,
@@ -255,34 +263,35 @@
 					latitude:this.latitude,
 					longitude:this.longitude,
 					title: this.userinfo.nickName,
-					iconPath:'../../static/location.png'
+					iconPath:"../../static/location.png"
 				})
 				
 				wx.startDeviceMotionListening({
 					interval: 'normal',
 					success: (res) => {
 						wx.onDeviceMotionChange(res => {
-							console.log(res.alpha);
-							if(Math.abs(this.zhizhen - res.alpha) < 95) {
+							if(Math.abs(this.zhizhen - res.alpha) < 30) {
 								console.log('小于30不更新。。。');
 								return
 							}else {
 								console.log('大于30更新。。。');
-								this.zhizhen = res.alpha + 45
+								this.zhizhen = res.alpha
 								socket.emit('location', {
 									id:this.id,
+									img:this.userinfo.avatarUrl,
 									type:this.type,
 									width: 16,
+									customCallout:{display:'ALWAYS', anchorX:0, anchorY:0},
 									height: 16,
 									anchor: {
 										x: 0.5,
 										y: 0.5
 									},
-									rotate: this.zhizhen,
+									rotate: res.alpha <= 180 ?  res.alpha + 180 : res.alpha - 180,
 									latitude: this.relatitude,
 									longitude:this.relongitude,
 									title: this.userinfo.nickName,
-									iconPath:'../../static/location.png'
+									iconPath:"../../static/location.png"
 								})
 							}
 						})
@@ -300,9 +309,10 @@
 									this.relongitude = longitude
 									this.relatitude = latitude
 									socket.emit('location', {
-										id:this.id,
+										id:this.id,img:this.userinfo.avatarUrl,
 										type:this.type,
 										width: 16,
+										customCallout:{display:'ALWAYS', anchorX:0, anchorY:0},
 										height: 16,
 										anchor: {
 											x: 0.5,
@@ -312,7 +322,7 @@
 										latitude: latitude,
 										longitude:longitude,
 										title: this.userinfo.nickName,
-										iconPath:'../../static/location.png'
+										iconPath:"../../static/location.png"
 									})
 							}else {
 								
@@ -382,9 +392,10 @@
 				})
 				
 				socket.emit('location', {
-					id:this.id,
+					id:this.id,img:this.userinfo.avatarUrl,
 					type:this.type,
 					width: 16,
+					customCallout:{display:'ALWAYS', anchorX:0, anchorY:0},
 					height: 16,
 					anchor: {
 						x: 0.5,
@@ -394,33 +405,35 @@
 					latitude:this.latitude,
 					longitude:this.longitude,
 					title: this.userinfo.nickName,
-					iconPath:'../../static/location.png'
+					iconPath:"../../static/location.png"
 				})
 				
 				wx.startDeviceMotionListening({
 					interval: 'normal',
 					success: res => {
 						wx.onDeviceMotionChange(res => {
-							if(Math.abs(this.zhizhen - res.alpha) < 95) {
+							if(Math.abs(this.zhizhen - res.alpha) < 30) {
 								console.log('小于30不更新。。。');
 								return
 							}else {
 								console.log('大于30更新。。。');
-								this.zhizhen = res.alpha + 45
+								this.zhizhen = res.alpha
 								socket.emit('location', {
 									id:this.id,
+									img:this.userinfo.avatarUrl,
 									type:this.type,
 									width: 16,
+									customCallout:{display:'ALWAYS', anchorX:0, anchorY:0},
 									height: 16,
 									anchor: {
 										x: 0.5,
 										y: 0.5
 									},
-									rotate: this.zhizhen,
+									rotate: res.alpha <= 180 ?  res.alpha + 180 : res.alpha - 180,
 									latitude: this.latitude,
 									longitude:this.longitude,
 									title: this.userinfo.nickName,
-									iconPath:'../../static/location.png'
+									iconPath:"../../static/location.png"
 								})
 							}
 						})
@@ -441,9 +454,10 @@
 									this.relatitude = latitude
 									
 									socket.emit('location', {
-										id:this.id,
+										id:this.id,img:this.userinfo.avatarUrl,
 										type:this.type,
 										width: 16,
+										customCallout:{display:'ALWAYS', anchorX:0, anchorY:0},
 										height: 16,
 										anchor: {
 											x: 0.5,
@@ -453,7 +467,7 @@
 										latitude: latitude,
 										longitude: longitude,
 										title: this.userinfo.nickName,
-										iconPath:'../../static/location.png'
+										iconPath:"../../static/location.png"
 									})
 							}else {
 								
@@ -555,5 +569,10 @@
 	}
 	.rotate {
 		transform: rotateZ(45deg);
+	}
+	.cover-image {
+		width: 30px;
+		height: 30px;
+		border-radius: 50%;
 	}
 </style>
