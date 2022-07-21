@@ -1,5 +1,6 @@
 <template>
 	<view class="content">
+		<!--  -->
 		<view>
 			<uni-popup ref="inputDialog" type="dialog">
 				<uni-popup-dialog ref="inputClose"  mode="input" title="输入组队号" value=""
@@ -29,7 +30,7 @@
 			<cover-view slot="callout">
 				<template v-for="item in users">
 					<cover-view :marker-id="item.id">
-						<cover-image :src="item.img" class="cover-image"></cover-image>
+						<cover-image :src="item.img" class="cover-image" :key="item.img"></cover-image>
 					</cover-view>
 				</template>
 			  </cover-view>
@@ -68,10 +69,42 @@
 			}
 		},
 		onLoad() {
-			this.getLocation().then(res => {
-				this.longitude = res[0]
-				this.latitude = res[1]
+			const { locationEnabled } = wx.getSystemInfoSync()
+			wx.getSetting({
+			  success: (res) => {
+			    if (!res.authSetting['scope.userLocation']) {
+			      wx.authorize({
+			        scope: 'scope.userLocation',
+			        success: ()  => {
+						if(!locationEnabled) {
+							this.message('success', '位置服务未开启,请开启后重新进入小程序')
+							return
+						} 
+			          // 获取位置信息
+			          this.getLocation().then(res => {
+			          	this.latitude = res[1]
+						this.longitude = res[0]
+						this.relatitude =  res[1]
+						this.relongitude = res[0]
+			          })
+			        }
+			      })
+			    }else {
+					if(!locationEnabled) {
+						this.message('success', '位置服务未开启,请开启后重新进入小程序')
+						return
+					} 
+					// 获取位置信息
+					this.getLocation().then(res => {
+						this.latitude = res[1]
+						this.longitude = res[0]
+						this.relatitude =  res[1]
+						this.relongitude = res[0]
+					})
+				}
+			  }
 			})
+
 		},
 		onShow() {
 			if(this.room && this.type == 'creater') {
@@ -109,6 +142,7 @@
 					uni.getLocation({
 						type: 'gcj02',
 						success:  (res) =>  {
+							console.log(res, '.....');
 							resolve([res.longitude, res.latitude])
 						}
 					});
@@ -260,21 +294,20 @@
 						y: 0.5
 					},
 					rotate: this.zhizhen,
-					latitude:this.latitude,
-					longitude:this.longitude,
+					latitude:this.relatitude,
+					longitude:this.relongitude,
 					title: this.userinfo.nickName,
 					iconPath:"../../static/location.png"
 				})
 				
 				wx.startDeviceMotionListening({
 					interval: 'normal',
-					success: (res) => {
+					success: res => {
 						wx.onDeviceMotionChange(res => {
 							if(Math.abs(this.zhizhen - res.alpha) < 30) {
-								console.log('小于30不更新。。。');
 								return
 							}else {
-								console.log('大于30更新。。。');
+								console.log('发送了位置');
 								this.zhizhen = res.alpha
 								socket.emit('location', {
 									id:this.id,
@@ -289,7 +322,7 @@
 									},
 									rotate: res.alpha <= 180 ?  res.alpha + 180 : res.alpha - 180,
 									latitude: this.relatitude,
-									longitude:this.relongitude,
+									longitude: this.relongitude,
 									title: this.userinfo.nickName,
 									iconPath:"../../static/location.png"
 								})
@@ -303,13 +336,17 @@
 				
 				wx.startLocationUpdate({
 					success: res=> {
+						
 						wx.onLocationChange(({latitude, longitude}) => {
-							if(this.relatitude !== latitude || this.relongitude !== longitude) {
+							if(Math.abs(this.relatitude - latitude) > 0.0005 || Math.abs(this.relongitude !== longitude) > 0.0005) {
+									console.log(this.relongitude,latitude);
 									// 优化部分
 									this.relongitude = longitude
 									this.relatitude = latitude
+									 
 									socket.emit('location', {
-										id:this.id,img:this.userinfo.avatarUrl,
+										id:this.id,
+										img:this.userinfo.avatarUrl,
 										type:this.type,
 										width: 16,
 										customCallout:{display:'ALWAYS', anchorX:0, anchorY:0},
@@ -318,9 +355,9 @@
 											x: 0.5,
 											y: 0.5
 										},
-										rotate:this.zhizhen,
+										rotate: this.zhizhen,
 										latitude: latitude,
-										longitude:longitude,
+										longitude: longitude,
 										title: this.userinfo.nickName,
 										iconPath:"../../static/location.png"
 									})
@@ -365,7 +402,7 @@
 
 				socket.on('location',res => {
 					res = typeof res === 'string' ? JSON.parse(res) : res
-					console.log(this.users);
+					console.log('接受到位置');
 					if(res.type === 'creater') {
 						
 						this.users = [res]
@@ -392,7 +429,8 @@
 				})
 				
 				socket.emit('location', {
-					id:this.id,img:this.userinfo.avatarUrl,
+					id:this.id,
+					img:this.userinfo.avatarUrl,
 					type:this.type,
 					width: 16,
 					customCallout:{display:'ALWAYS', anchorX:0, anchorY:0},
@@ -402,8 +440,8 @@
 						y: 0.5
 					},
 					rotate:this.zhizhen,
-					latitude:this.latitude,
-					longitude:this.longitude,
+					latitude:this.relatitude,
+					longitude:this.relongitude,
 					title: this.userinfo.nickName,
 					iconPath:"../../static/location.png"
 				})
@@ -413,10 +451,9 @@
 					success: res => {
 						wx.onDeviceMotionChange(res => {
 							if(Math.abs(this.zhizhen - res.alpha) < 30) {
-								console.log('小于30不更新。。。');
 								return
 							}else {
-								console.log('大于30更新。。。');
+								console.log('发送了位置');
 								this.zhizhen = res.alpha
 								socket.emit('location', {
 									id:this.id,
@@ -430,8 +467,8 @@
 										y: 0.5
 									},
 									rotate: res.alpha <= 180 ?  res.alpha + 180 : res.alpha - 180,
-									latitude: this.latitude,
-									longitude:this.longitude,
+									latitude: this.relatitude,
+									longitude: this.relongitude,
 									title: this.userinfo.nickName,
 									iconPath:"../../static/location.png"
 								})
@@ -447,14 +484,14 @@
 					success: res=> {
 						
 						wx.onLocationChange(({latitude, longitude}) => {
-							if(this.latitude !== latitude || this.longitude !== longitude) {
+							if(Math.abs(this.relatitude - latitude) > 0.0005 || Math.abs(this.relongitude !== longitude) > 0.0005) {
 									
 									// 优化部分
 									this.relongitude = longitude
 									this.relatitude = latitude
-									
 									socket.emit('location', {
-										id:this.id,img:this.userinfo.avatarUrl,
+										id:this.id,
+										img:this.userinfo.avatarUrl,
 										type:this.type,
 										width: 16,
 										customCallout:{display:'ALWAYS', anchorX:0, anchorY:0},
